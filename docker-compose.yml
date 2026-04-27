@@ -1,0 +1,92 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: playto_db
+      POSTGRES_USER: playto_user
+      POSTGRES_PASSWORD: playto_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U playto_user -d playto_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    command: >
+      sh -c "python manage.py migrate &&
+             python seed.py &&
+             python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_NAME=playto_db
+      - DB_USER=playto_user
+      - DB_PASSWORD=playto_pass
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: ./backend
+    command: celery -A playto worker --loglevel=info -P solo
+    volumes:
+      - ./backend:/app
+    environment:
+      - DB_NAME=playto_db
+      - DB_USER=playto_user
+      - DB_PASSWORD=playto_pass
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build: ./backend
+    command: celery -A playto beat --loglevel=info
+    volumes:
+      - ./backend:/app
+    environment:
+      - DB_NAME=playto_db
+      - DB_USER=playto_user
+      - DB_PASSWORD=playto_pass
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
