@@ -109,3 +109,13 @@ balance = sum(e.amount for e in entries if e.type == 'credit') - sum(e.amount fo
 I opted for Sum at Database Level.
 
 Justifications: The process is highly inefficient, highly memory-consuming for large ledgers, and also susceptible to race conditions due to mutations to the rows before and during computation. The utilization of Sum() guarantees that the summation will be executed deeply within the database engine (optimized at the C-level) and that the select_for_update lock will persist.
+
+Example 2: Missing Validation for Negative Payouts
+
+While testing, I noticed a bug for the negative payout amounts are not handeled properly. Which just breaks the actual financial logic of the system.
+So added the strict validation for the negative payout amounts.
+
+```python
+if amount_paise <= 0:
+    return Response({"error": "Payout amount must be positive"}, status=400)
+```

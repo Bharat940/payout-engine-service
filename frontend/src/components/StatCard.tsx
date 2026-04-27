@@ -1,5 +1,4 @@
-import type { LucideIcon } from "lucide-react";
-import { formatINR } from "../utils/format";
+import { type LucideIcon } from "lucide-react";
 
 interface StatCardProps {
   title: string;
@@ -9,15 +8,15 @@ interface StatCardProps {
 }
 
 const StatCard = ({ title, amount, icon: Icon, color }: StatCardProps) => (
-  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm">
+  <div className="bg-slate-900/40 rounded-3xl p-6 transition-all hover:bg-slate-900/60 group">
     <div className="flex items-center justify-between mb-4">
-      <span className="text-slate-400 text-sm font-medium">{title}</span>
-      <div className={`p-2 rounded-lg ${color}`}>
+      <div className={`p-3 rounded-2xl ${color} transition-transform group-hover:scale-110`}>
         <Icon size={20} />
       </div>
+      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{title}</span>
     </div>
-    <div className="text-2xl font-bold text-white tracking-tight">
-      {formatINR(amount)}
+    <div className="text-2xl font-bold tracking-tight text-white">
+      ₹{(amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
     </div>
   </div>
 );

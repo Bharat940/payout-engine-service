@@ -53,4 +53,6 @@ export const createPayout = (
     { headers: { "Idempotency-Key": idempotencyKey } },
   );
 
+export const resetData = () => api.post("/reset/");
+
 export default api;

@@ -101,7 +101,7 @@ class PayoutView(APIView):
                     "error": "Request already in progress"
                 }, status=status.HTTP_409_CONFLICT)
 
-            # Lock the merchant row to serialize balance checks
+            # 1. Lock the merchant row to serialize balance checks and prevent race conditions
             merchant_locked = Merchant.objects.select_for_update().get(id=merchant.id)
 
             amount_paise = request.data.get('amount_paise')
@@ -114,6 +114,9 @@ class PayoutView(APIView):
                 amount_paise = int(amount_paise)
             except ValueError:
                 return Response({"error": "amount_paise must be an integer"}, status=400)
+
+            if amount_paise <= 0:
+                return Response({"error": "Payout amount must be positive"}, status=400)
 
             # Re-calculate balance inside the lock
             available_balance, held_balance = calculate_balances(merchant_locked)
@@ -157,4 +160,27 @@ class LedgerListView(ListAPIView):
     def get_queryset(self):
         merchant_id = self.request.headers.get('X-Merchant-ID')
         return LedgerEntry.objects.filter(merchant_id=merchant_id).order_by('-created_at')
+
+class ResetMerchantView(APIView):
+    def post(self, request):
+        merchant_id = request.headers.get('X-Merchant-ID', '1')
+        try:
+            merchant = Merchant.objects.get(id=merchant_id)
+            with transaction.atomic():
+                # Clear all related records
+                from .models import Payout, LedgerEntry, IdempotencyRecord
+                Payout.objects.filter(merchant=merchant).delete()
+                LedgerEntry.objects.filter(merchant=merchant).delete()
+                IdempotencyRecord.objects.filter(merchant=merchant).delete()
+                
+                # Add fresh 10,000 INR balance
+                LedgerEntry.objects.create(
+                    merchant=merchant,
+                    entry_type='credit',
+                    amount_paise=1000000,
+                    description="Manual Balance Reset (10,000 INR)"
+                )
+            return Response({"message": "Merchant data reset successfully with 10,000 INR balance."})
+        except Merchant.DoesNotExist:
+            return Response({"error": "Merchant not found"}, status=404)
 
