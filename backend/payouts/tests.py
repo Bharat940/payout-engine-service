@@ -84,12 +84,11 @@ class PayoutEngineTests(TransactionTestCase):
             res1 = future1.result()
             res2 = future2.result()
 
-        # One must succeed (201) and one must fail (400 Insufficient Funds)
+        # One must succeed (201) and one must fail (400)
         status_codes = [res1.status_code, res2.status_code]
         self.assertIn(status.HTTP_201_CREATED, status_codes)
         self.assertIn(status.HTTP_400_BAD_REQUEST, status_codes)
         
         # Verify ledger balance: 100,000 - 60,000 = 40,000
-        # Actually balance calculation includes held funds
         self.assertEqual(Payout.objects.filter(merchant=self.merchant, status='pending').count(), 1)
 

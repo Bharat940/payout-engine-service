@@ -32,7 +32,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // We use a local variable to prevent setting state on an unmounted component
     let isMounted = true;
 
     const loadInitialData = async () => {
@@ -42,7 +41,7 @@ function App() {
     };
 
     loadInitialData();
-    
+
     const interval = setInterval(() => {
       if (isMounted) fetchData();
     }, 5000);
@@ -56,10 +55,10 @@ function App() {
   const handlePayoutSubmit = async (amountPaise: number, bankId: number) => {
     setIsLoading(true);
     const idempotencyKey = crypto.randomUUID();
-    
+
     try {
       await createPayout(amountPaise, bankId, idempotencyKey);
-      await fetchData(); 
+      await fetchData();
     } catch (err: unknown) {
       // Type assertion for error response
       const errorMessage = (err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Payout request failed';
@@ -102,23 +101,23 @@ function App() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <StatCard 
-            title="Available Balance" 
-            amount={balance?.available_balance || 0} 
-            icon={Wallet} 
-            color="bg-emerald-500/10 text-emerald-500" 
+          <StatCard
+            title="Available Balance"
+            amount={balance?.available_balance || 0}
+            icon={Wallet}
+            color="bg-emerald-500/10 text-emerald-500"
           />
-          <StatCard 
-            title="Total Balance" 
-            amount={balance?.total_balance || 0} 
-            icon={IndianRupee} 
-            color="bg-blue-500/10 text-blue-500" 
+          <StatCard
+            title="Total Balance"
+            amount={balance?.total_balance || 0}
+            icon={IndianRupee}
+            color="bg-blue-500/10 text-blue-500"
           />
-          <StatCard 
-            title="Held Balance" 
-            amount={balance?.held_balance || 0} 
-            icon={Clock} 
-            color="bg-amber-500/10 text-amber-500" 
+          <StatCard
+            title="Held Balance"
+            amount={balance?.held_balance || 0}
+            icon={Clock}
+            color="bg-amber-500/10 text-amber-500"
           />
         </div>
 
@@ -131,7 +130,7 @@ function App() {
           <div className="lg:col-span-4">
             <div className="sticky top-28">
               <PayoutForm onSubmit={handlePayoutSubmit} isLoading={isLoading} />
-              
+
               <div className="mt-8 p-6 bg-blue-600/5 border border-blue-500/10 rounded-2xl">
                 <h4 className="text-sm font-semibold text-blue-500 mb-2 uppercase tracking-wider">Quick Note</h4>
                 <p className="text-sm text-slate-400 leading-relaxed">

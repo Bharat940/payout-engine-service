@@ -43,8 +43,7 @@ I chose the append-only ledger design because it is guaranteed that whatever the
                 return Response({"error": "amount_paise must be an integer"}, status=400)
 
             # Re-calculate balance inside the lock
-            total_balance, held_balance = calculate_balances(merchant_locked)
-            available_balance = total_balance - held_balance
+            available_balance, held_balance = calculate_balances(merchant_locked)
 
             if available_balance < amount_paise:
                 return Response({"error": "Insufficient funds"}, status=status.HTTP_400_BAD_REQUEST)

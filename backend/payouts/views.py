@@ -33,8 +33,7 @@ def calculate_balances(merchant):
 
 class BalanceView(APIView):
     def get(self, request):
-        # For simplicity in this challenge, we'll use a merchant_id from headers
-        # In prod, this would come from request.user (authenticated merchant)
+        # For simplicity , we'll use a merchant_id from headers
         merchant_id = request.headers.get('X-Merchant-ID')
         if not merchant_id:
             return Response({"error": "X-Merchant-ID header required"}, status=400)
@@ -43,9 +42,9 @@ class BalanceView(APIView):
         total_balance, held_balance = calculate_balances(merchant)
         
         return Response({
-            "total_balance": total_balance,
+            "total_balance": total_balance + held_balance,
             "held_balance": held_balance,
-            "available_balance": total_balance - held_balance
+            "available_balance": total_balance
         })
 
 class PayoutView(APIView):
@@ -85,10 +84,9 @@ class PayoutView(APIView):
                     "error": "A request with this idempotency key is currently being processed."
                 }, status=status.HTTP_409_CONFLICT)
 
-        # 2. Start Atomic Transaction with Lock
+        # 2. Atomic Transaction with Lock
         with transaction.atomic():
             # Create the record immediately to mark it "in-flight"
-            # This handles the race condition where another request hits before this one finishes 
             try:
                 IdempotencyRecord.objects.create(
                     merchant=merchant,
@@ -104,7 +102,6 @@ class PayoutView(APIView):
                 }, status=status.HTTP_409_CONFLICT)
 
             # Lock the merchant row to serialize balance checks
-            # No other payout request for this merchant can proceed past this line until we commit
             merchant_locked = Merchant.objects.select_for_update().get(id=merchant.id)
 
             amount_paise = request.data.get('amount_paise')
@@ -119,8 +116,7 @@ class PayoutView(APIView):
                 return Response({"error": "amount_paise must be an integer"}, status=400)
 
             # Re-calculate balance inside the lock
-            total_balance, held_balance = calculate_balances(merchant_locked)
-            available_balance = total_balance - held_balance
+            available_balance, held_balance = calculate_balances(merchant_locked)
 
             if available_balance < amount_paise:
                 return Response({"error": "Insufficient funds"}, status=status.HTTP_400_BAD_REQUEST)

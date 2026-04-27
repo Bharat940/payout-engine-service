@@ -14,11 +14,20 @@ def process_payouts():
     pending_payouts = Payout.objects.filter(status='pending')
     
     for payout in pending_payouts:
-        # Move to processing
         with transaction.atomic():
-            payout.status = 'processing'
-            payout.processing_started_at = timezone.now()
-            payout.save()
+            # Lock the payout row to prevent race conditions during state change
+            payout_locked = Payout.objects.select_for_update().get(id=payout.id)
+            
+            # Prevent backwards transitions
+            if payout_locked.status in ['completed', 'failed']:
+                continue
+                
+            payout_locked.status = 'processing'
+            payout_locked.processing_started_at = timezone.now()
+            payout_locked.save()
+            
+            # Use locked object for the rest of processing
+            payout = payout_locked
 
         # Simulate Bank Outcome
         outcome = random.random()
@@ -48,7 +57,7 @@ def monitor_stuck_payouts():
     for payout in stuck_payouts:
         if payout.attempt_count < 3:
             payout.attempt_count += 1
-            # Exponential backoff simulation (just re-processing here for simplicity)
+            # Exponential backoff simulation
             payout.processing_started_at = timezone.now()
             payout.save()
             print(f"Retrying payout {payout.id} (Attempt {payout.attempt_count})")
